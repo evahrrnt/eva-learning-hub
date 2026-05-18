@@ -65,6 +65,9 @@ header{border-bottom:1px solid var(--line);padding:1.25rem 2.5rem;display:flex;a
 .vocab-word{font-size:17px;font-weight:500;margin-bottom:2px;}
 .vocab-type{font-size:11px;color:var(--ink3);font-style:italic;margin-bottom:6px;}
 .empty-state{padding:3rem 1rem;text-align:center;color:var(--ink3);font-size:14px;}
+.sort-toggle{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3);cursor:pointer;border:1px solid var(--line);border-radius:20px;padding:4px 12px;background:white;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.sort-toggle:hover{border-color:var(--ink2);color:var(--ink);}
+.sort-toggle.active{background:var(--ink);color:white;border-color:var(--ink);}
 /* SESSIONS EXPAND */
 .session-card{cursor:pointer;}
 .session-card:hover{border-color:var(--ink2);}
@@ -167,22 +170,22 @@ header{border-bottom:1px solid var(--line);padding:1.25rem 2.5rem;display:flex;a
   </nav>
   <main class="main">
     <div id="sec-errors" class="section active">
-      <div class="section-head"><div class="section-title">Errors & fixes</div><div class="section-count" id="lbl-err"></div></div>
+      <div class="section-head"><div class="section-title">Errors & fixes</div><div style="display:flex;align-items:center;gap:8px"><div class="section-count" id="lbl-err"></div><button class="sort-toggle" id="sort-errors" onclick="toggleSort('errors')">↓ newest first</button></div></div>
       <div class="cards" id="list-errors"></div>
       <button class="add-btn" onclick="openModal('error')">+ Add error</button>
     </div>
     <div id="sec-phrases" class="section">
-      <div class="section-head"><div class="section-title">Key phrases</div><div class="section-count" id="lbl-phr"></div></div>
+      <div class="section-head"><div class="section-title">Key phrases</div><div style="display:flex;align-items:center;gap:8px"><div class="section-count" id="lbl-phr"></div><button class="sort-toggle" id="sort-phrases" onclick="toggleSort('phrases')">↓ newest first</button></div></div>
       <div class="cards" id="list-phrases"></div>
       <button class="add-btn" onclick="openModal('phrase')">+ Add phrase</button>
     </div>
     <div id="sec-phrasal" class="section">
-      <div class="section-head"><div class="section-title">Phrasal verbs</div><div class="section-count" id="lbl-pv"></div></div>
+      <div class="section-head"><div class="section-title">Phrasal verbs</div><div style="display:flex;align-items:center;gap:8px"><div class="section-count" id="lbl-pv"></div><button class="sort-toggle" id="sort-phrasal" onclick="toggleSort('phrasal')">↓ newest first</button></div></div>
       <div class="cards" id="list-phrasal"></div>
       <button class="add-btn" onclick="openModal('phrasal')">+ Add phrasal verb</button>
     </div>
     <div id="sec-vocab" class="section">
-      <div class="section-head"><div class="section-title">Vocabulary</div><div class="section-count" id="lbl-vocab"></div></div>
+      <div class="section-head"><div class="section-title">Vocabulary</div><div style="display:flex;align-items:center;gap:8px"><div class="section-count" id="lbl-vocab"></div><button class="sort-toggle" id="sort-vocab" onclick="toggleSort('vocab')">↓ newest first</button></div></div>
       <div class="cards" id="list-vocab"></div>
       <button class="add-btn" onclick="openModal('vocab')">+ Add word</button>
     </div>
@@ -191,7 +194,7 @@ header{border-bottom:1px solid var(--line);padding:1.25rem 2.5rem;display:flex;a
       <div class="cards" id="list-verbs"></div>
     </div>
     <div id="sec-interview" class="section">
-      <div class="section-head"><div class="section-title">Interview answers</div><div class="section-count" id="lbl-int"></div></div>
+      <div class="section-head"><div class="section-title">Interview answers</div><div style="display:flex;align-items:center;gap:8px"><div class="section-count" id="lbl-int"></div><button class="sort-toggle" id="sort-interview" onclick="toggleSort('interview')">↓ newest first</button></div></div>
       <div class="cards" id="list-interview"></div>
       <button class="add-btn" onclick="openModal('interview')">+ Add answer</button>
     </div>
@@ -394,7 +397,25 @@ function loadData(){
 function saveData(){try{localStorage.setItem('eva-hub-v3',JSON.stringify(data));}catch(e){}}
 data=loadData();
 
-// ── TAB SWITCHING ──────────────────────────────────────────
+// ── SORT STATE ─────────────────────────────────────────────
+const sortState={errors:'newest',phrases:'newest',phrasal:'newest',vocab:'newest',interview:'newest'};
+const SESSION_ORDER={'Session 1':1,'Session 2':2,'Session 3':3,'Session 4':4,'Session 5':5,'Session 6':6};
+function sessionNum(s){return SESSION_ORDER[s]||0;}
+function sortedItems(arr,key){
+  const copy=[...arr];
+  if(sortState[key]==='newest') copy.sort((a,b)=>sessionNum(b.session)-sessionNum(a.session));
+  else copy.sort((a,b)=>sessionNum(a.session)-sessionNum(b.session));
+  return copy;
+}
+function toggleSort(key){
+  sortState[key]=sortState[key]==='newest'?'oldest':'newest';
+  const btn=document.getElementById('sort-'+key);
+  if(btn){
+    btn.textContent=sortState[key]==='newest'?'↓ newest first':'↑ oldest first';
+    btn.classList.toggle('active',sortState[key]==='newest');
+  }
+  renderAll();
+}
 function switchTopTab(name,e){
   document.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.top-tab').forEach(t=>t.classList.remove('active'));
@@ -417,7 +438,7 @@ function mb(id,k){const done=data[k].find(i=>i.id===id)&&data[k].find(i=>i.id===
 function renderErrors(){
   const el=document.getElementById('list-errors');
   if(!data.errors.length){el.innerHTML='<div class="empty-state">No errors yet.</div>';return;}
-  el.innerHTML=data.errors.map(e=>`<div class="card ${e.done?'done':''}" id="${e.id}">
+  el.innerHTML=sortedItems(data.errors,'errors').map(e=>`<div class="card ${e.done?'done':''}" id="${e.id}">
     <div class="card-header"><span class="badge" style="${bs(e.badge)}">${e.badge}</span>${mb(e.id,'errors')}</div>
     <div class="wrong">"${e.wrong}"</div><div class="right">"${e.right}"</div>
     <div class="ctx">${e.ctx}<br><small style="display:block;margin-top:6px;color:#8A837A">${e.session}</small></div>
@@ -427,7 +448,7 @@ function renderErrors(){
 function renderPhrases(){
   const el=document.getElementById('list-phrases');
   if(!data.phrases.length){el.innerHTML='<div class="empty-state">No phrases yet.</div>';return;}
-  el.innerHTML=data.phrases.map(p=>`<div class="card ${p.done?'done':''}" id="${p.id}">
+  el.innerHTML=sortedItems(data.phrases,'phrases').map(p=>`<div class="card ${p.done?'done':''}" id="${p.id}">
     <div class="card-header"><span class="badge" style="${bs(p.badge)}">${p.badge}</span>${mb(p.id,'phrases')}</div>
     <div class="phrase-title">"${p.phrase}"</div><div class="phrase-sub">${p.meaning}</div>
     <div class="ctx">${p.ctx}<br><small style="display:block;margin-top:6px;color:#8A837A">${p.session}</small></div>
@@ -437,7 +458,7 @@ function renderPhrases(){
 function renderPhrasal(){
   const el=document.getElementById('list-phrasal');
   if(!data.phrasal.length){el.innerHTML='<div class="empty-state">No phrasal verbs yet.</div>';return;}
-  el.innerHTML=data.phrasal.map(p=>`<div class="card ${p.done?'done':''}" id="${p.id}">
+  el.innerHTML=sortedItems(data.phrasal,'phrasal').map(p=>`<div class="card ${p.done?'done':''}" id="${p.id}">
     <div class="card-header"><span class="badge" style="${bs(p.badge)}">${p.badge}</span>${mb(p.id,'phrasal')}</div>
     <div class="phrase-title">"${p.phrase}"</div><div class="phrase-sub">${p.meaning}</div>
     <div class="ctx">${p.ctx}<br><small style="display:block;margin-top:6px;color:#8A837A">${p.session}</small></div>
@@ -447,7 +468,7 @@ function renderPhrasal(){
 function renderVocab(){
   const el=document.getElementById('list-vocab');
   if(!data.vocab.length){el.innerHTML='<div class="empty-state">No vocabulary yet.</div>';return;}
-  el.innerHTML=data.vocab.map(v=>`<div class="card ${v.done?'done':''}" id="${v.id}">
+  el.innerHTML=sortedItems(data.vocab,'vocab').map(v=>`<div class="card ${v.done?'done':''}" id="${v.id}">
     <div class="card-header"><span class="badge" style="${bs('vocabulary')}">vocabulary</span>${mb(v.id,'vocab')}</div>
     <div class="vocab-word">${v.word}</div><div class="vocab-type">${v.type}</div>
     <div style="font-size:13px;color:var(--ink2);margin-bottom:6px">${v.definition}</div>
@@ -476,7 +497,7 @@ function renderVerbs(){
 function renderInterview(){
   const el=document.getElementById('list-interview');
   if(!data.interview.length){el.innerHTML='<div class="empty-state">No answers yet.</div>';return;}
-  el.innerHTML=data.interview.map(i=>`<div class="card ${i.done?'done':''}" id="${i.id}">
+  el.innerHTML=sortedItems(data.interview,'interview').map(i=>`<div class="card ${i.done?'done':''}" id="${i.id}">
     <div class="card-header"><span class="badge" style="${bs('interview')}">interview</span>${mb(i.id,'interview')}</div>
     <div class="phrase-title" style="margin-bottom:10px">${i.question}</div>
     <div class="interview-answer">"${i.answer}"</div>
